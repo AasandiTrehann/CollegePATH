@@ -1,0 +1,101 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  password      String
+  createdAt     DateTime       @default(now())
+  savedColleges SavedCollege[]
+}
+
+model College {
+  id              String         @id @default(cuid())
+  name            String
+  location        String
+  fees            Float          // Representative Annual Fees in INR
+  overview        String         @db.Text
+  establishedYear Int
+  courses         Course[]
+  placements      Placement[]
+  reviews         Review[]
+  savedByUsers    SavedCollege[]
+  cutoffs         Cutoff[]
+
+  @@index([name, location])
+  @@index([location])
+  @@index([fees])
+}
+
+model Course {
+  id        String   @id @default(cuid())
+  name      String
+  duration  String   // e.g., "4 Years", "2 Years"
+  fees      Float    // Specific Annual Fees for this course in INR
+  collegeId String
+  college   College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  cutoffs   Cutoff[]
+
+  @@index([collegeId])
+}
+
+model Placement {
+  id             String  @id @default(cuid())
+  year           Int     // e.g. 2023
+  averagePackage Float   // Average package in LPA (Lakhs Per Annum)
+  highestPackage Float   // Highest package in LPA
+  placementRate  Float   // Placement percentage (e.g. 92.5)
+  collegeId      String
+  college        College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+
+  @@index([collegeId])
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  studentName String
+  rating      Float    // User-submitted rating (1 to 5)
+  comment     String   @db.Text
+  createdAt   DateTime @default(now())
+  collegeId   String
+  college     College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+
+  @@index([collegeId])
+}
+
+model SavedCollege {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collegeId String
+  college   College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, collegeId])
+  @@index([userId])
+  @@index([collegeId])
+}
+
+model Cutoff {
+  id        String  @id @default(cuid())
+  exam      String  // "JEE Main" or "JEE Advanced"
+  category  String  // "General", "OBC", "SC", "ST", "EWS"
+  round     Int     // Counselling Round (1, 2, 3, 4, 5, 6, 7)
+  minRank   Int     // Opening Cutoff Rank
+  maxRank   Int     // Closing Cutoff Rank
+  collegeId String
+  college   College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([collegeId])
+  @@index([courseId])
+  @@index([exam, category, round, maxRank])
+}
